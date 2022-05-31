@@ -14,6 +14,9 @@ fHists=[]
 numBins = 3
 consideredFrac = .2
 
+minM = 1800
+maxM = 4500
+
 bkgThreshold = [1000 for i in range(numBins+1)]
 
 sigThresholds = [[] for i in range(numBins)]
@@ -166,7 +169,19 @@ def fitFunc(iData,iCat,iMin,iMax,iStep,iFixToSB=False):
     """
     lNSig   = r.RooRealVar("sig_rate","sig_rate",0.1*pData.Integral(),0,0.3*pData.Integral())
     lSig   = r.RooGaussian("sig","gauss(x,mean,sigma)",lX,lMass,lSigma)
-    lBkg   = r.RooBernstein("bkg","bernstein_for_QCD",lX,r.RooArgList(lA0,lA1,lA2,lA3))
+    #lBkg   = r.RooBernstein("bkg","bernstein_for_QCD",lX,r.RooArgList(lA0,lA1,lA2,lA3))
+
+
+    biasDec = r.RooRealVar("biasDec","biasDec",0.00,-500,500)
+    sigmaDec = r.RooRealVar("sigmaDec","sigmaDec",1.00,-50,50)
+    tm = r.RooTruthModel("tm","truth model",lX)
+    gm = r.RooGaussModel("gm", "gauss model", lX, biasDec, sigmaDec)
+    lTau     = r.RooRealVar   ("tau"+"_"+iCat,"tau"+"_"+iCat,500,1,10000.)
+    lBkg = r.RooDecay("bkg", "decay_for_QCD", lX, lTau, tm, r.RooDecay.SingleSided)
+    #lBkg = r.RooDecay("bkg", "decay_for_QCD", lX, lTau, gm, r.RooDecay.SingleSided)
+
+
+    #lBkg   = r.RooBernstein("bkg","bernstein_for_QCD",lX,r.RooArgList(lA0,lA1,lA2))
     #lBkg    = r.RooAbsPdf()
     lTot    = r.RooAddPdf("model", "model", r.RooArgList(lSig, lQCDP))
     lHData  = r.RooDataHist("data_obs","data_obs", r.RooArgList(lX),pData)
@@ -324,8 +339,8 @@ def makeHist(iName,iCut,iBBTree):
 if __name__ == "__main__":#blackbox2-CutFromMap.root
 
     eta_cut = None
-    flow_type = 'NSQUAD'
-    #flow_type = 'NSQUAD_nocontam'
+    #flow_type = 'NSQUAD'
+    flow_type = 'NSQUAD_nocontam'
 
     if not eta_cut:
         eta_str = 'None'
@@ -503,7 +518,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
         for i1 in range(numBins):
             pData1=makeHist(label[i0][i1],[i0,i1],lTTree)
             #masses1,pvalues1=fitFunc(pData1,pBkg1,"BB1",1500,4500,200,iBkgTemp)
-            masses1,pvalues1=fitFunc(pData1,"bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1]))),1500,4500,200,iBkgTemp)
+            masses1,pvalues1=fitFunc(pData1,"bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1]))),minM,maxM,200,iBkgTemp)
             pvalues.append(pvalues1)
             masses.append(masses1)
 
@@ -517,7 +532,11 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
             title = "bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1])))
             dc_file.write("bin_"+title+"=test_"+title+".txt ")
 
-    dc_file.write("> fullCard.txt")
+    dc_file.write("> fullCard.txt\n")
+    for i0 in range(numBins):
+        for i1 in range(numBins):
+            title = "bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1])))
+            dc_file.write("text2workspace.py test_"+title+".txt\n")
     dc_file.close()
 
     #dc_file = open("checkCommand.txt","w")
@@ -538,7 +557,32 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
     dc_templ_file = open("./massScanner_TEMPLATE.sh")
     dc_file = open("autoMassScan.sh","w")
     for line in dc_templ_file:
+        line=line.replace('MIN', str(minM))
+        line=line.replace('MAX', str(maxM))
         line=line.replace('COMMAND', combComm)
+        dc_file.write(line)
+    dc_file.close()
+    dc_templ_file.close()
+
+    
+    cutNameList = '"'
+    for i0 in range(numBins):
+        for i1 in range(numBins):
+            cutNameList += "bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1])))
+            if(i0*i1 < (numBins-1)*(numBins-1)):
+                cutNameList += '", "'
+            else:
+                cutNameList += '"'
+    
+    dc_templ_file = open("./simpleDrawer_TEMPLATE.py")
+    dc_file = open("fullPlotter.py","w")
+    for line in dc_templ_file:
+        line=line.replace('LIST', cutNameList)
+        line=line.replace('MINIMUMMASS', str(minM))
+        line=line.replace('MAXIMUMMASS', str(maxM))
+        line=line.replace('GAPS', str(100))
+        #line=line.replace('MAX', str(maxM))
+        #line=line.replace('COMMAND', combComm)
         dc_file.write(line)
     dc_file.close()
     dc_templ_file.close()

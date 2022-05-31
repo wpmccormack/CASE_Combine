@@ -3,9 +3,19 @@
 #s=20
 #b=15
 
+mkdir noSig
+cd noSig
+ln -s ../etacutNone_NSQUAD* .
+cp ../rooWorkSpaceMaker.py .
+cp ../test_BINTEMPLATE.txt .
+cp ../combine_TEMPLATE.txt .
+cp ../massScanner_TEMPLATE.sh .
+cp ../simpleDrawer_TEMPLATE.py .
 python rooWorkSpaceMaker.py
 source combineCommand.txt
 text2workspace.py fullCard.txt
+source autoMassScan.sh
+python fullPlotter.py
 
 #combine -M ChannelCompatibilityCheck fullCard.root -m 2500 --preFitValue 0 --rMax 1000 --setParameterRanges sigma=75,75:sig_rate_bkgL_190_10000_sigL_389_10000=1,1:sig_rate_bkgL_162_190_sigL_299_10000=1,1:sig_rate_bkgL_162_190_sigL_0_299=1,1:sig_rate_bkgL_190_10000_sigL_0_389=1,1 --saveFitResult
 

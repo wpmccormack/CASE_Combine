@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for mass in {1500..5000..50}
+for mass in {MIN..MAX..50}
 do
     COMMAND
 done
