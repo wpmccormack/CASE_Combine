@@ -16,9 +16,18 @@ consideredFrac = .1
 
 minM = 1800
 maxM = 4500
+#minM = 1900
+#maxM = 2700
+minMForHists = 1600
+maxMForHists = 6000
+binForHists = 75
+
+minMscan = 1800
+maxMscan = 4500
+massgaps = 100
 
 sigMin = 75
-sigMax = 75
+sigMax = 100
 sigGap = 25
 
 bkgThreshold = [1000 for i in range(numBins+1)]
@@ -176,12 +185,17 @@ def fitFunc(iData,iCat,iMin,iMax,iStep,iFixToSB=False):
     #lBkg   = r.RooBernstein("bkg","bernstein_for_QCD",lX,r.RooArgList(lA0,lA1,lA2,lA3))
 
 
-    biasDec = r.RooRealVar("biasDec","biasDec",0.00,-500,500)
-    sigmaDec = r.RooRealVar("sigmaDec","sigmaDec",1.00,-50,50)
-    tm = r.RooTruthModel("tm","truth model",lX)
-    gm = r.RooGaussModel("gm", "gauss model", lX, biasDec, sigmaDec)
-    lTau     = r.RooRealVar   ("tau"+"_"+iCat,"tau"+"_"+iCat,500,1,10000.)
-    lBkg = r.RooDecay("bkg", "decay_for_QCD", lX, lTau, tm, r.RooDecay.SingleSided)
+    #biasDec = r.RooRealVar("biasDec","biasDec",0.00,-500,500)
+    #sigmaDec = r.RooRealVar("sigmaDec","sigmaDec",1.00,-50,50)
+    #tm = r.RooTruthModel("tm","truth model",lX)
+    #gm = r.RooGaussModel("gm", "gauss model", lX, biasDec, sigmaDec)
+    #lTau     = r.RooRealVar   ("tau"+"_"+iCat,"tau"+"_"+iCat,500,1,10000.)
+    #lBkg = r.RooDecay("bkg", "decay_for_QCD", lX, lTau, tm, r.RooDecay.SingleSided)
+    p0 = r.RooRealVar("p0"+"_"+iCat,"p0"+"_"+iCat,1,1,1)
+    p1 = r.RooRealVar("p1"+"_"+iCat,"p1"+"_"+iCat,10.00,-100,100)
+    p2 = r.RooRealVar("p2"+"_"+iCat,"p2"+"_"+iCat,4.00,0,100)
+    p3 = r.RooRealVar("p3"+"_"+iCat,"p3"+"_"+iCat,1.05,-10,30)
+    lBkg = r.RooMyPdf("bkg","dijet_decay",lX,p0,p1,p2,p3)
     #lBkg = r.RooDecay("bkg", "decay_for_QCD", lX, lTau, gm, r.RooDecay.SingleSided)
 
 
@@ -322,7 +336,7 @@ def sigVsMassPlot(masses,pvalues,labels):
 
 #def makeHist(iName,iCut,iBBTree,iBkgTree):
 def makeHist(iName,iCut,iBBTree):
-    lData1 = r.TH1F("bbhist"+iName,"bbhist"+iName,50,1200,6000)
+    lData1 = r.TH1F("bbhist"+iName,"bbhist"+iName,binForHists,minMForHists,maxMForHists)
     #lBkg1  = r.TH1F("bkhist"+iName,"bkhist"+iName,50,1200,6000)
 
     #cut="loss2 > 5.5 && loss1 < 10.0"
@@ -341,6 +355,9 @@ def makeHist(iName,iCut,iBBTree):
     return lData1
 
 if __name__ == "__main__":#blackbox2-CutFromMap.root
+
+
+    r.gSystem.Load('RooMyPdf_cxx.so')
 
     i = 1
     inputFileName = ""
@@ -372,7 +389,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
     #print(output.Count())
     #print(output.Filter("loss2>15").Count())
 
-    lAll = r.TH1F("all","all",50,1200,6000)
+    lAll = r.TH1F("all","all",binForHists,minMForHists,maxMForHists)
     #iBBTree .Draw("mass>>bbhist"+iName,"loss2 > %s && loss2 < %s && loss1 > %s && loss1 < %s" % (str(bkgThreshold[iCut[0]]), str(bkgThreshold[iCut[0]+1]), str(sigThresholds[iCut[0]][iCut[1]]), str(sigThresholds[iCut[0]][iCut[1]+1])),"goff")
     lTTree.Draw("mass>>all","loss2 > 0","goff")
     TotalNum = lAll.Integral()
@@ -397,7 +414,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
     for b in range(numBins):
         print(b, minCut, binFrac, TotalNum, minCut - b*binFrac*TotalNum)
         for i in range(startCut,100):
-            lTest = r.TH1F("testH","testH",50,1200,6000)
+            lTest = r.TH1F("testH","testH",binForHists,minMForHists,maxMForHists)
             lTTree.Draw("mass>>testH","loss2>%s" % (str(i)),"goff")
             passNum = lTest.Integral()
             #passNum = float(len(pandas.DataFrame(output.Filter("loss2>%s" % (str(i))).AsNumpy(columns=["loss2"]))["loss2"].to_numpy()))
@@ -408,7 +425,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
                 #break
                 passed = False
                 for j in range(10):
-                    lTest2 = r.TH1F("testH2","testH2",50,1200,6000)
+                    lTest2 = r.TH1F("testH2","testH2",binForHists,minMForHists,maxMForHists)
                     lTTree.Draw("mass>>testH2","loss2>%s" % (str(float(i-1)+0.1*j)),"goff")
                     passNum2 = lTest2.Integral()
                     #passNum2 = float(len(pandas.DataFrame(output.Filter("loss2>%s" % (str(float(i-1)+0.1*j))).AsNumpy(columns=["loss2"]))["loss2"].to_numpy()))
@@ -429,7 +446,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
         startCut = 0
         for b2 in range(1,numBins):
             for i in range(startCut,100):
-                lTest = r.TH1F("testH","testH",50,1200,6000)
+                lTest = r.TH1F("testH","testH",binForHists,minMForHists,maxMForHists)
                 lTTree.Draw("mass>>testH","loss2>%s && loss2<%s && loss1>%s && loss1<%s" % (str(bkgThreshold[b1]), str(bkgThreshold[b1+1]), str(sigThresholds[b1][b2-1]), str(i)),"goff")
                 passNum = lTest.Integral()
                 #passNum = float(len(pandas.DataFrame(output.Filter("loss2>%s && loss2<%s && loss1>%s && loss1<%s" % (str(bkgThreshold[b1]), str(bkgThreshold[b1+1]), str(sigThresholds[b1][b2-1]), str(i))).AsNumpy(columns=["loss2"]))["loss2"].to_numpy()))
@@ -439,7 +456,7 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
                     #startCut = i-1
                     passed = False
                     for j in range(10):
-                        lTest2 = r.TH1F("testH2","testH2",50,1200,6000)
+                        lTest2 = r.TH1F("testH2","testH2",binForHists,minMForHists,maxMForHists)
                         lTTree.Draw("mass>>testH2","loss2>%s && loss2<%s && loss1>%s && loss1<%s" % (str(bkgThreshold[b1]), str(bkgThreshold[b1+1]), str(sigThresholds[b1][b2-1]), str(float(i)+0.1*j)),"goff")
                         passNum2 = lTest2.Integral()
                         #passNum2 = float(len(pandas.DataFrame(output.Filter("loss2>%s && loss2<%s && loss1>%s && loss1<%s" % (str(bkgThreshold[b1]), str(bkgThreshold[b1+1]), str(sigThresholds[b1][b2-1]), str(float(i)+0.1*j))).AsNumpy(columns=["loss2"]))["loss2"].to_numpy()))
@@ -598,7 +615,57 @@ if __name__ == "__main__":#blackbox2-CutFromMap.root
         line=line.replace('LIST', cutNameList)
         line=line.replace('MINIMUMMASS', str(minM))
         line=line.replace('MAXIMUMMASS', str(maxM))
-        line=line.replace('GAPS', str(100))
+        line=line.replace('GAPS', str(massgaps))
+        line=line.replace('SIGMAMIN', str(sigMin))
+        line=line.replace('SIGMAMAX', str(sigMax))
+        line=line.replace('SIGMAGAP', str(sigGap))
+        #line=line.replace('MAX', str(maxM))
+        #line=line.replace('COMMAND', combComm)
+        dc_file.write(line)
+    dc_file.close()
+    dc_templ_file.close()
+
+
+    cutNameList = '"'
+    for i0 in range(numBins):
+        for i1 in range(numBins):
+            cutNameList += "bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1])))
+            if(i0*i1 < (numBins-1)*(numBins-1)):
+                cutNameList += '" "'
+            else:
+                cutNameList += '"'
+
+    dc_templ_file = open("./significance_TEMPLATE.sh")
+    dc_file = open("significance.sh","w")
+    for line in dc_templ_file:
+        line=line.replace('MASSMIN', str(minMscan))
+        line=line.replace('MASSMAX', str(maxMscan))
+        line=line.replace('LISTOFFILES', cutNameList)
+        line=line.replace('SIGMAMIN', str(sigMin))
+        line=line.replace('GAPS', str(massgaps))
+        line=line.replace('SIGMAMAX', str(sigMax))
+        line=line.replace('SIGMAGAP', str(sigGap))
+        dc_file.write(line)
+    dc_file.close()
+    dc_templ_file.close()
+
+
+    cutNameList = '"'
+    for i0 in range(numBins):
+        for i1 in range(numBins):
+            cutNameList += "bkgL_%s_%s_sigL_%s_%s" % (str(int(10*bkgThreshold[i0])), str(int(10*bkgThreshold[i0+1])), str(int(10*sigThresholds[i0][i1])), str(int(10*sigThresholds[i0][i1+1])))
+            if(i0*i1 < (numBins-1)*(numBins-1)):
+                cutNameList += '", "'
+            else:
+                cutNameList += '"'
+    
+    dc_templ_file = open("./residual_TEMPLATE.py")
+    dc_file = open("resid.py","w")
+    for line in dc_templ_file:
+        line=line.replace('LIST', cutNameList)
+        line=line.replace('MINIMUMMASS', str(minMscan))
+        line=line.replace('MAXIMUMMASS', str(maxMscan))
+        line=line.replace('GAPS', str(massgaps))
         line=line.replace('SIGMAMIN', str(sigMin))
         line=line.replace('SIGMAMAX', str(sigMax))
         line=line.replace('SIGMAGAP', str(sigGap))

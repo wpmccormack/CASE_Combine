@@ -88,6 +88,21 @@ def drawWorkspace(wspace, fitres, cutName, mh, nominal, sig):
     
     #lWorkspace.var("a2_bkgL_140_10000_sigL_0_289").setVal(fitres.floatParsFinal().find("a2_bkgL_140_10000_sigL_0_289").getValV())
     #iter = fitres.floatParsFinal().createIterator();
+    testw = fitres.getSnapshot("MultiDimFit")
+    #testw.Print()
+    iter = testw.createIterator()
+    var = iter.Next()
+    while var :
+        if(var.GetName() != "w" and var.GetName() != "CMS_channel"):
+            #print(var.GetName(), var.getVal())
+            testvar = lWorkspace.var(var.GetName())
+            if(testvar):
+                #print(var.GetName())
+                #print(var.getVal())
+                lWorkspace.var(var.GetName()).setVal(var.getVal())
+        var = iter.Next()
+
+    """
     all_pars = fitres.floatParsFinal()
     #argvals = lWorkspace.allVars()
     for i in xrange(all_pars.getSize()):
@@ -113,13 +128,24 @@ def drawWorkspace(wspace, fitres, cutName, mh, nominal, sig):
             #lWorkspace.var("sig_rate_bkgL_113_140_sigL_279_10000").setVal(par.getVal())
             #lWorkspace.var("sig_rate_bkgL_97_113_sigL_259_10000").setVal(par.getVal())
             lWorkspace.var("sig_rate_"+cutName).setVal(par.getVal())
-
+    """
     #lWorkspace.pdf("pdf_binbin_bkgL_140_10000_sigL_0_289_nuis").plotOn(lFrame)
     #lWorkspace.pdf("pdf_binbin_bkgL_113_140_sigL_279_10000_nuis").plotOn(lFrame)
     #lWorkspace.pdf("pdf_binbin_bkgL_97_113_sigL_259_10000_nuis").plotOn(lFrame)
     lWorkspace.pdf("pdf_binbin_"+cutName+"_nuis").plotOn(lFrame)
     #fitres.plotOn(lFrame)
     lFrame.Draw()
+    #print(cutName, lFrame.chiSquare())
+    #print(cutName, lFrame.makeResidHist())
+    #print(lFrame.residHist()._entries)
+    hresid = lFrame.residHist()
+    #frame2 = lWorkspace.var("x").frame(Title("Residual Distribution"))
+    frame2 = lWorkspace.var("x").frame()
+    frame2.SetTitle("resids"+cutName)
+    frame2.GetXaxis().SetTitle("m_{jj} (GeV)")
+    frame2.GetYaxis().SetTitle("Events")
+    frame2.addPlotable(hresid,"P")
+    frame2.Draw()
     """
     lRange = len(iFuncs)
     for i0 in range(lRange):
@@ -155,8 +181,11 @@ def drawWorkspace(wspace, fitres, cutName, mh, nominal, sig):
     #lPT.Draw()
     #myFile.WriteObject(lCan, "MyCan")
     myFile.WriteObject(lFrame, fullName)
+    myFile.WriteObject(frame2, fullName+"resids")
     #lCan.SaveAs(lCan.GetName()+".pdf")
     #end()
+    #print(lFrame.GetNbinsX())
+    return lFrame.chiSquare()*lFrame.GetNbinsX()
 
 
 if __name__ == "__main__":
@@ -180,59 +209,104 @@ if __name__ == "__main__":
             print("Invalid input")
             i += 1
     """
+
     minSigma = SIGMAMIN
     maxSigma = SIGMAMAX
     gapSigma = SIGMAGAP
     cutNameList = [LIST]
-    nominalPossibilities = [True, False]
+    #nominalPossibilities = [True, False]
+    nominalPossibilities = ['Sig','NoSig']
     minM = MINIMUMMASS
     maxM = MAXIMUMMASS
     spacing = GAPS
 
+    
+
+    relevantIndices = []
+    for i in range(len(cutNameList)):
+        print(i, i%np.sqrt(len(cutNameList)), math.floor(float(i)/np.sqrt(len(cutNameList))), np.sqrt(len(cutNameList)))
+        if(i%np.sqrt(len(cutNameList)) == 0 and math.floor(float(i)/np.sqrt(len(cutNameList))) == np.sqrt(len(cutNameList))-1):
+            relevantIndices.append(i)
+        if(i%np.sqrt(len(cutNameList)) == 0 and math.floor(float(i)/np.sqrt(len(cutNameList))) == np.sqrt(len(cutNameList))-2):
+            relevantIndices.append(i)
+        if(i%np.sqrt(len(cutNameList)) == 1 and math.floor(float(i)/np.sqrt(len(cutNameList))) == np.sqrt(len(cutNameList))-1):
+            relevantIndices.append(i)
+
     #cutName = "bkgL_97_113_sigL_259_10000"
+    #pvalsSig = []
     for sig in range(minSigma, maxSigma+gapSigma, gapSigma):
-        for cutName in cutNameList:
-            lTFile = r.TFile("./test_"+cutName+".root")
-            lWorkspace = lTFile.Get("w")
-            
-            #file2 = r.TFile("./higgsCombineTest.ChannelCompatibilityCheck.mH3150.root")
-            for resMass in range(minM, maxM, spacing):
-                file2 = r.TFile("./higgsCombineTest.ChannelCompatibilityCheck.mH"+str(resMass)+"_sigma"+str(sig)+".root")
+        plottablePs = []
+        relevantPs = []
+        plottableMasses = []
+        for resMass in range(minM, maxM+spacing, spacing):
+            pvals = []
+            for cutName in cutNameList:
+                lTFile = r.TFile("./test_"+cutName+".root")
+                lWorkspace = lTFile.Get("w")
+                
+                #file2 = r.TFile("./higgsCombineTest.ChannelCompatibilityCheck.mH3150.root")
+                #for resMass in range(minM, maxM, spacing):
+                #for resMass in [2000,2500,2800,3200,3700]:
+                chisqs = []
                 for nominal in nominalPossibilities:
-                    if(nominal):
-                        lFitRes = file2.Get("fit_nominal")
-                    else:
-                        lFitRes = file2.Get("fit_alternate")
-                    
-                    #lWorkspace.Print()
-                    if(lFitRes):
-                        drawWorkspace(lWorkspace, lFitRes, cutName, resMass, nominal, sig)
-            lTFile.Close()
+                    file2 = r.TFile("./higgsCombine"+nominal+".MultiDimFit.mH"+str(resMass)+"_sigma"+str(sig)+".root")
+                    lFitRes = file2.Get("w")
+                    chisqs.append(drawWorkspace(lWorkspace, lFitRes, cutName, resMass, nominal, sig))
+                #for nominal in nominalPossibilities:
+                #    if(nominal):
+                #        lFitRes = file2.Get("w")
+                #    else:
+                #        lFitRes = file2.Get("w")
+                #    
+                #    #lWorkspace.Print()
+                #    if(lFitRes):
+                #        drawWorkspace(lWorkspace, lFitRes, cutName, resMass, nominal, sig)
+                print(chisqs)
+                print(cutName, stats.chi2.sf(chisqs[1]-chisqs[0],1))
+                pvals.append(stats.chi2.sf(chisqs[1]-chisqs[0],1))
+                lTFile.Close()
+            logp = 0.
+            for p in pvals:
+                logp = logp - 2.*np.log(p)
+            logpR = 0.
+            for rel in relevantIndices:
+                print("CHECK OUT RELEVANT BINS?", rel, pvals[rel])
+                logpR = logpR - 2.*np.log(pvals[rel])
+            print("RESMASS IS ", resMass, "SIGMA IS", sig, "PVAL IS", stats.chi2.sf(logp,2*len(pvals)))
+            plottablePs.append(stats.chi2.sf(logp,2*len(pvals)))
+            relevantPs.append(stats.chi2.sf(logpR,2*len(relevantIndices)))
+            plottableMasses.append(resMass)
             #end()
-
-        lTFile = r.TFile("./fullMassScan_sigma"+str(sig)+".root")
-        myTree = lTFile.Get("limit")
-
+            #logp = 0.
+            #for p in pvals:
+            #    logp = logp - 2.*np.log(p)
+            #print(stats.chi2.sf(logp,2*len(pvals)))
+            
+        #lTFile = r.TFile("./fullMassScan_sigma"+str(sig)+".root")
+        #myTree = lTFile.Get("limit")
+        
         #masses = []
         #chi2 = []
-        masses, chi2, pvalues = array( 'd' ), array( 'd' ), array( 'd' )
+        masses, chi2, pvalues, pRvalues = array( 'd' ), array( 'd' ), array( 'd' ), array( 'd' )
         
         n=0
-        for entry in myTree:
-            masses.append(entry.mh)
-            chi2.append(entry.limit)
+        #for entry in myTree:
+        for e in range(len(plottableMasses)):
+            masses.append(plottableMasses[e])
+            pvalues.append(plottablePs[e])
+            pRvalues.append(relevantPs[e])
             #print(str(entry.mh)+" chi2 = "+str(entry.limit)+" pvalue 9 = "+str(1. - stats.chi2.cdf(entry.limit,9))+" pvalue 8 = "+str(1. - stats.chi2.cdf(entry.limit,8)))
             #print(str(entry.mh)+" chi2 = "+str(entry.limit)+" pvalue 9 = "+str(stats.chi2.sf(entry.limit,9))+" pvalue 8 = "+str(stats.chi2.sf(entry.limit,8)))
-            pvalues.append(stats.chi2.sf(entry.limit,len(cutNameList)))
+            #pvalues.append(stats.chi2.sf(entry.limit,len(cutNameList)))
             n+=1
-        
-        gr = r.TGraph( n, masses, chi2 )
-        gr.SetMarkerColor( 4 )
-        gr.SetMarkerStyle( 21 )
-        gr.SetTitle( 'chi2 vs resMass for sigma '+str(sig) )
-        gr.GetXaxis().SetTitle( 'Mass Hypothesis' )
-        gr.GetYaxis().SetTitle( 'Pseudo Chi2' )
-        gr.Draw()
+            
+        #gr = r.TGraph( n, masses, chi2 )
+        #gr.SetMarkerColor( 4 )
+        #gr.SetMarkerStyle( 21 )
+        #gr.SetTitle( 'chi2 vs resMass for sigma '+str(sig) )
+        #gr.GetXaxis().SetTitle( 'Mass Hypothesis' )
+        #gr.GetYaxis().SetTitle( 'Pseudo Chi2' )
+        #gr.Draw()
         
         
         lC0 = r.TCanvas("mh_scan_sigma_"+str(sig),"mh_scan_sigma_"+str(sig),800,600)
@@ -281,11 +355,61 @@ if __name__ == "__main__":
         
         
         
+        lCR = r.TCanvas("mh_relevant_scan_sigma_"+str(sig),"mh_relevant_scan_sigma_"+str(sig),800,600)
+        legR = r.TLegend(0.55,0.23,0.86,0.47)
+        legR.SetFillColor(0)
+        lGraphs2=[]
+        sigmas2=[]
+        
+        graph2 = r.TGraph(n,masses,pRvalues)
+        graph2.SetMarkerStyle(20)
+        graph2.GetXaxis().SetTitle("m_{jj} (GeV)")
+        graph2.GetYaxis().SetTitle("p^{0} value")
+        graph2.SetTitle("")#Significance vs Mass")                                                                                                                                                                          
+        #graph1.SetLineColor(51+i0*12)
+        #graph1.SetMarkerColor(51+i0*12)
+        #graph1.SetLineWidth(2+i0)
+        r.gPad.SetLogy(True)
+        #graph1.Draw()
+        graph2.Draw("alp")
+        lGraphs2.append(graph2)
+        legR.AddEntry(graph2,'test2',"lp")
+        lines2=[]
+        for i0 in range(20):#len(sigmas)):
+            #print(1-stats.norm.cdf(i0+1), stats.norm.sf(i0+1))
+            #sigmas.append(1-stats.norm.cdf(i0+1))
+            sigmas2.append(stats.norm.sf(i0+1))
+            lLine = r.TLine(masses[0],sigmas2[i0],masses[len(masses)-1],sigmas2[i0])
+            lLine.SetLineStyle(r.kDashed)
+            lLine.SetLineWidth(2)
+            lLine.Draw()
+            #lPT = r.TPaveText(3200,sigmas[i0],3700,sigmas[i0]+1.5*sigmas[i0])
+            lPT = r.TPaveText(3200,sigmas2[i0],3700,sigmas2[i0]+20.5*sigmas2[i0])
+            lPT.SetFillStyle(4050)
+            lPT.SetFillColor(0)
+            lPT.SetBorderSize(0)
+            lPT.AddText(str(i0+1)+"#sigma")
+            lPT.Draw()
+            lines2.append(lLine)
+            lines2.append(lPT)
+            
+        for pGraph in lGraphs2:
+            pGraph.Draw("lp")
+        #graph2.Draw()
+        #for pGraph in lGraphs:
+        #    pGraph.Draw("lp")
+        #leg.Draw()
+        lCR.Update()
+        lCR.Draw()
+        
+        
+        
         
         myFile = r.TFile.Open("fileTEST.root", "UPDATE")
-        myFile.WriteObject(gr, 'chi2_vs_resMass_sigma'+str(sig))
+        #myFile.WriteObject(gr, 'chi2_vs_resMass_sigma'+str(sig))
         myFile.WriteObject(graph1, 'pval_vs_resMass_sigma'+str(sig))
         myFile.WriteObject(lC0, 'SignificancePlot_sigma'+str(sig))
+        myFile.WriteObject(lCR, 'RelevantSignificancePlot_sigma'+str(sig))
         myFile.Close()
         #lCan   = r.TCanvas("workspace","workspace",800,600)
         
@@ -293,5 +417,4 @@ if __name__ == "__main__":
         #myTree.Draw("limit:mh")
         #lCan.Modified()
         #lCan.Update()
-        #myFile.WriteObject(lCan, "MyCan")
-        
+        #myFile.WriteObject(lCan, "MyCan")        

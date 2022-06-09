@@ -6,16 +6,21 @@
 mkdir $1
 cd $1
 ln -s ../etacutNone_NSQUAD* .
-ln -s ../rooWorkSpaceMaker.py .
+ln -s ../rooWorkSpaceMaker*.py .
 ln -s ../test_BINTEMPLATE.txt .
 ln -s ../combine_TEMPLATE.txt .
 ln -s ../massScanner_TEMPLATE.sh .
+ln -s ../significance_TEMPLATE.sh .
+ln -s ../residual_TEMPLATE.py .
 ln -s ../simpleDrawer_TEMPLATE.py .
-python rooWorkSpaceMaker.py -f $2
+ln -s ../Roo* .
+python rooWorkSpaceMaker_NewDiJetFunction.py -f $2
 source combineCommand.txt
 text2workspace.py fullCard.txt
-source autoMassScan.sh
-python fullPlotter.py
+source significance.sh
+python resid.py
+#source autoMassScan.sh
+#python fullPlotter.py
 
 #combine -M ChannelCompatibilityCheck fullCard.root -m 2500 --preFitValue 0 --rMax 1000 --setParameterRanges sigma=75,75:sig_rate_bkgL_190_10000_sigL_389_10000=1,1:sig_rate_bkgL_162_190_sigL_299_10000=1,1:sig_rate_bkgL_162_190_sigL_0_299=1,1:sig_rate_bkgL_190_10000_sigL_0_389=1,1 --saveFitResult
 

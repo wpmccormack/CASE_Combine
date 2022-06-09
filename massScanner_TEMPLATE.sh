@@ -2,7 +2,14 @@
 
 for mass in {MIN..MAX..50}
 do
-    COMMAND
+    for sig in {SIGMAMIN..SIGMAMAX..SIGMAGAP}
+    do
+	COMMAND
+	mv higgsCombineTest.ChannelCompatibilityCheck.mH${mass}.root higgsCombineTest.ChannelCompatibilityCheck.mH${mass}_sigma${sig}.root
+    done
 done
 
-hadd fullMassScan.root higgsCombineTest.ChannelCompatibilityCheck.mH*.root
+for sig in {SIGMAMIN..SIGMAMAX..SIGMAGAP}
+do
+    hadd fullMassScan_sigma${sig}.root higgsCombineTest.ChannelCompatibilityCheck.mH*_sigma${sig}.root
+done

@@ -6,12 +6,13 @@
 mkdir $1
 cd $1
 ln -s ../etacutNone_NSQUAD* .
-ln -s ../rooWorkSpaceMaker.py .
+ln -s ../rooWorkSpaceMaker*.py .
 ln -s ../test_BINTEMPLATE.txt .
 ln -s ../combine_TEMPLATE.txt .
 ln -s ../massScanner_TEMPLATE.sh .
 ln -s ../simpleDrawer_TEMPLATE.py .
-python rooWorkSpaceMaker.py -f $2
+ln -s ../Roo* .
+python rooWorkSpaceMaker_NewDiJetFunction.py -f $2
 source combineCommand.txt
 text2workspace.py fullCard.txt
 source autoMassScan.sh
