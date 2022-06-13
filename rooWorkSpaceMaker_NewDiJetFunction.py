@@ -11,7 +11,7 @@ import pandas
 fOutput="OutputFromMaker.root"
 fHists=[]
 
-numBins = 3
+numBins = 5
 consideredFrac = .1
 
 minM = 1800

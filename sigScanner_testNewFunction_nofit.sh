@@ -11,6 +11,7 @@ ln -s ../test_BINTEMPLATE.txt .
 ln -s ../combine_TEMPLATE.txt .
 ln -s ../massScanner_TEMPLATE.sh .
 ln -s ../significance_TEMPLATE.sh .
+ln -s ../single_mass.sh .
 ln -s ../residual_TEMPLATE.py .
 ln -s ../simpleDrawer_TEMPLATE.py .
 ln -s ../Roo* .
